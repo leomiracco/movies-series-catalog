@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState, useTransition, FormEvent } from "react";
+import { useState, useEffect, FormEvent } from "react";
 import { Search, X } from "lucide-react";
 
 const MOVIE_GENRES = [
@@ -45,13 +45,21 @@ const TV_GENRES = [
 export default function FilterBar() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [, startTransition] = useTransition();
 
   const [type, setType] = useState(searchParams.get("type") || "movie");
   const [genre, setGenre] = useState(searchParams.get("genre") || "");
   const [year, setYear] = useState(searchParams.get("year") || "");
   const [sortBy, setSortBy] = useState(searchParams.get("sortBy") || "vote_average.desc");
   const [query, setQuery] = useState(searchParams.get("query") || "");
+
+  // Mantener el estado sincronizado con la URL
+  useEffect(() => {
+    setType(searchParams.get("type") || "movie");
+    setGenre(searchParams.get("genre") || "");
+    setYear(searchParams.get("year") || "");
+    setSortBy(searchParams.get("sortBy") || "vote_average.desc");
+    setQuery(searchParams.get("query") || "");
+  }, [searchParams]);
 
   const genresList = type === "movie" ? MOVIE_GENRES : TV_GENRES;
 
@@ -64,18 +72,27 @@ export default function FilterBar() {
       else params.delete(key);
     });
 
-    startTransition(() => {
-      router.push(`/?${params.toString()}`);
-    });
+    router.push(`/?${params.toString()}`);
+  };
+
+  const executeSearch = () => {
+    // Cierra el teclado en celulares para que el usuario vea los resultados de inmediato
+    if (typeof document !== "undefined" && document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+    updateFilters({ query });
   };
 
   const handleSearchSubmit = (e: FormEvent) => {
     e.preventDefault();
-    updateFilters({ query });
+    executeSearch();
   };
 
   const handleYearSubmit = (e: FormEvent) => {
     e.preventDefault();
+    if (typeof document !== "undefined" && document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
     updateFilters({ year });
   };
 
@@ -101,27 +118,35 @@ export default function FilterBar() {
 
   return (
     <div className="bg-neutral-900 border border-neutral-800 p-4 rounded-xl shadow-lg mb-8 text-neutral-100 flex flex-col gap-4">
-      {/* Formulario de búsqueda por nombre con soporte nativo para Enter / Botón Buscar */}
+      {/* Buscador de texto con botón y soporte móvil */}
       <form onSubmit={handleSearchSubmit} className="relative flex items-center">
         <button
-          type="submit"
-          className="absolute left-3 text-neutral-400 hover:text-amber-400 p-1 transition-colors"
+          type="button"
+          onClick={executeSearch}
+          className="absolute left-3 z-10 text-neutral-400 hover:text-amber-400 p-1.5 transition-colors cursor-pointer"
           title="Buscar"
         >
           <Search className="w-4 h-4" />
         </button>
         <input
-          type="text"
-          placeholder="Buscar por nombre (presiona Enter o la lupa)..."
+          type="search"
+          enterKeyHint="search"
+          placeholder="Buscar por nombre (presiona la lupa o Enter)..."
           value={query}
           onChange={(e) => handleQueryChange(e.target.value)}
-          className="w-full pl-10 pr-10 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-sm focus:outline-none focus:border-amber-500 transition-colors placeholder-neutral-500"
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              executeSearch();
+            }
+          }}
+          className="w-full pl-10 pr-10 py-2.5 bg-neutral-800 border border-neutral-700 rounded-lg text-sm text-neutral-100 focus:outline-none focus:border-amber-500 transition-colors placeholder-neutral-500"
         />
         {query && (
           <button
             type="button"
             onClick={clearSearch}
-            className="absolute right-3 text-neutral-400 hover:text-white p-0.5 rounded-full hover:bg-neutral-700 transition-colors"
+            className="absolute right-3 z-10 text-neutral-400 hover:text-white p-1 rounded-full hover:bg-neutral-700 transition-colors cursor-pointer"
             title="Limpiar búsqueda"
           >
             <X className="w-4 h-4" />
@@ -129,7 +154,7 @@ export default function FilterBar() {
         )}
       </form>
 
-      {/* 4 Controles de filtro en grilla */}
+      {/* 4 Controles de filtro */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {/* Catálogo */}
         <div>
@@ -142,7 +167,7 @@ export default function FilterBar() {
               setGenre("");
               updateFilters({ type: newType, genre: "" });
             }}
-            className="w-full bg-neutral-800 border border-neutral-700 rounded-lg p-2 text-sm focus:outline-none focus:border-amber-500"
+            className="w-full bg-neutral-800 border border-neutral-700 rounded-lg p-2.5 text-sm focus:outline-none focus:border-amber-500"
           >
             <option value="movie">Películas</option>
             <option value="tv">Series de TV</option>
@@ -159,7 +184,7 @@ export default function FilterBar() {
               setGenre(val);
               updateFilters({ genre: val });
             }}
-            className="w-full bg-neutral-800 border border-neutral-700 rounded-lg p-2 text-sm focus:outline-none focus:border-amber-500"
+            className="w-full bg-neutral-800 border border-neutral-700 rounded-lg p-2.5 text-sm focus:outline-none focus:border-amber-500"
           >
             <option value="">Todos los géneros</option>
             {genresList.map((g) => (
@@ -170,23 +195,34 @@ export default function FilterBar() {
           </select>
         </div>
 
-        {/* Año con soporte para Enter */}
+        {/* Año con enterKeyHint */}
         <div>
           <label className="block text-xs text-neutral-400 mb-1">Año</label>
           <form onSubmit={handleYearSubmit} className="relative">
             <input
               type="number"
+              inputMode="numeric"
+              enterKeyHint="search"
               placeholder="Ej: 1980, 2022..."
               value={year}
               onChange={(e) => handleYearChange(e.target.value)}
               onBlur={() => updateFilters({ year })}
-              className="w-full bg-neutral-800 border border-neutral-700 rounded-lg p-2 pr-8 text-sm focus:outline-none focus:border-amber-500 placeholder-neutral-500"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  if (typeof document !== "undefined" && document.activeElement instanceof HTMLElement) {
+                    document.activeElement.blur();
+                  }
+                  updateFilters({ year });
+                }
+              }}
+              className="w-full bg-neutral-800 border border-neutral-700 rounded-lg p-2.5 pr-8 text-sm text-neutral-100 focus:outline-none focus:border-amber-500 placeholder-neutral-500"
             />
             {year && (
               <button
                 type="button"
                 onClick={clearYear}
-                className="absolute right-2 top-2.5 text-neutral-400 hover:text-white p-0.5 rounded-full hover:bg-neutral-700 transition-colors"
+                className="absolute right-2 top-3 z-10 text-neutral-400 hover:text-white p-0.5 rounded-full hover:bg-neutral-700 transition-colors"
                 title="Limpiar año"
               >
                 <X className="w-3.5 h-3.5" />
@@ -204,7 +240,7 @@ export default function FilterBar() {
               setSortBy(e.target.value);
               updateFilters({ sortBy: e.target.value });
             }}
-            className="w-full bg-neutral-800 border border-neutral-700 rounded-lg p-2 text-sm focus:outline-none focus:border-amber-500"
+            className="w-full bg-neutral-800 border border-neutral-700 rounded-lg p-2.5 text-sm focus:outline-none focus:border-amber-500"
           >
             <option value="vote_average.desc">Mayor Rating</option>
             <option value="vote_average.asc">Menor Rating</option>
