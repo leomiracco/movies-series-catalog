@@ -8,11 +8,12 @@ import { MediaItem, TMDBResponse } from "@/types/tmdb";
 import { Loader2 } from "lucide-react";
 
 // ============================================================================
-// INTERRUPTOR DE BÚSQUEDA EN TIEMPO REAL:
-// false = Solo busca al presionar Enter o tocar la Lupa.
-// true  = Busca solo a medida que vas escribiendo (estilo Netflix).
+// INTERRUPTORES DE BÚSQUEDA EN TIEMPO REAL:
+// false = Solo busca al presionar Enter (o tocar la lupa).
+// true  = Busca automáticamente a medida que vas escribiendo.
 // ============================================================================
-const ENABLE_LIVE_SEARCH = false;
+const ENABLE_LIVE_SEARCH = false;      // Para el buscador por nombre
+const ENABLE_LIVE_YEAR_SEARCH = false; // Para el buscador por año
 
 export default function HomePage() {
   const [items, setItems] = useState<MediaItem[]>([]);
@@ -21,20 +22,21 @@ export default function HomePage() {
   // Estados de los filtros
   const [type, setType] = useState<"movie" | "tv">("movie");
   const [genre, setGenre] = useState("");
-  const [year, setYear] = useState("");
   const [sortBy, setSortBy] = useState("vote_average.desc");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
-  // queryInput: lo que está escrito en la caja en este momento
-  // activeQuery: el término con el que realmente se hace la búsqueda
+  // Texto del nombre
   const [queryInput, setQueryInput] = useState("");
   const [activeQuery, setActiveQuery] = useState("");
 
-  // Búsqueda en vivo (solo se activa si ENABLE_LIVE_SEARCH es true)
+  // Texto del año
+  const [yearInput, setYearInput] = useState("");
+  const [activeYear, setActiveYear] = useState("");
+
+  // Búsqueda en vivo de Nombre (controlada por su switch)
   useEffect(() => {
     if (!ENABLE_LIVE_SEARCH) {
-      // Si el usuario borra todo el texto, regresa al catálogo automáticamente
       if (queryInput === "" && activeQuery !== "") {
         setActiveQuery("");
         setPage(1);
@@ -49,9 +51,32 @@ export default function HomePage() {
     return () => clearTimeout(timer);
   }, [queryInput, activeQuery]);
 
-  // Se ejecuta al presionar Enter o tocar la lupa
+  // Búsqueda en vivo de Año (controlada por su switch)
+  useEffect(() => {
+    if (!ENABLE_LIVE_YEAR_SEARCH) {
+      if (yearInput === "" && activeYear !== "") {
+        setActiveYear("");
+        setPage(1);
+      }
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setActiveYear(yearInput);
+      setPage(1);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [yearInput, activeYear]);
+
+  // Búsqueda inmediata de Nombre (Enter o Lupa)
   const handleImmediateSearch = () => {
     setActiveQuery(queryInput);
+    setPage(1);
+  };
+
+  // Búsqueda inmediata de Año (Enter en casilla de año)
+  const handleImmediateYearSearch = () => {
+    setActiveYear(yearInput);
     setPage(1);
   };
 
@@ -67,7 +92,7 @@ export default function HomePage() {
 
       if (activeQuery.trim() !== "") params.set("query", activeQuery.trim());
       if (genre) params.set("genre", genre);
-      if (year.trim() !== "") params.set("year", year.trim());
+      if (activeYear.trim() !== "") params.set("year", activeYear.trim());
 
       const res = await fetch(`/api/catalog?${params.toString()}`);
       if (res.ok) {
@@ -83,9 +108,8 @@ export default function HomePage() {
     } finally {
       setLoading(false);
     }
-  }, [type, page, sortBy, activeQuery, genre, year]);
+  }, [type, page, sortBy, activeQuery, genre, activeYear]);
 
-  // Ejecutar búsqueda cada vez que cambien los filtros
   useEffect(() => {
     fetchCatalog();
   }, [fetchCatalog]);
@@ -115,11 +139,9 @@ export default function HomePage() {
           setGenre(g);
           setPage(1);
         }}
-        year={year}
-        setYear={(y) => {
-          setYear(y);
-          setPage(1);
-        }}
+        year={yearInput}
+        setYear={setYearInput}
+        onYearSubmit={handleImmediateYearSearch}
         sortBy={sortBy}
         setSortBy={(s) => {
           setSortBy(s);

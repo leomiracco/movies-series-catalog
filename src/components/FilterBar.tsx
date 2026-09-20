@@ -51,6 +51,7 @@ interface FilterBarProps {
   setGenre: (val: string) => void;
   year: string;
   setYear: (val: string) => void;
+  onYearSubmit: () => void;
   sortBy: string;
   setSortBy: (val: string) => void;
 }
@@ -65,12 +66,13 @@ export default function FilterBar({
   setGenre,
   year,
   setYear,
+  onYearSubmit,
   sortBy,
   setSortBy,
 }: FilterBarProps) {
   const genresList = type === "movie" ? MOVIE_GENRES : TV_GENRES;
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSearchSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (typeof document !== "undefined" && document.activeElement instanceof HTMLElement) {
       document.activeElement.blur();
@@ -78,13 +80,21 @@ export default function FilterBar({
     onSearchSubmit();
   };
 
+  const handleYearFormSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    if (typeof document !== "undefined" && document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+    onYearSubmit();
+  };
+
   return (
     <div className="bg-neutral-900 border border-neutral-800 p-4 rounded-xl shadow-lg mb-8 text-neutral-100 flex flex-col gap-4">
       {/* Buscador de texto */}
-      <form onSubmit={handleSubmit} className="relative flex items-center w-full">
+      <form onSubmit={handleSearchSubmit} className="relative flex items-center w-full">
         <button
           type="button"
-          onClick={handleSubmit}
+          onClick={handleSearchSubmit}
           className="absolute left-0 top-0 bottom-0 pl-3 pr-2 flex items-center justify-center text-neutral-400 hover:text-amber-400 z-10 cursor-pointer"
           title="Buscar ahora"
         >
@@ -93,7 +103,7 @@ export default function FilterBar({
 
         <input
           type="text"
-          placeholder="Buscar por nombre (busca solo o presiona Enter/Lupa)..."
+          placeholder="Buscar por nombre (presiona Enter o la Lupa)..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           className="w-full pl-11 pr-10 py-2.5 bg-neutral-800 border border-neutral-700 rounded-lg text-sm text-neutral-100 focus:outline-none focus:border-amber-500 transition-colors placeholder-neutral-500"
@@ -146,10 +156,10 @@ export default function FilterBar({
           </select>
         </div>
 
-        {/* Año */}
+        {/* Año con soporte para Enter */}
         <div>
           <label className="block text-xs text-neutral-400 mb-1">Año</label>
-          <div className="relative flex items-center w-full">
+          <form onSubmit={handleYearFormSubmit} className="relative flex items-center w-full">
             <input
               type="number"
               placeholder="Ej: 1980, 2022..."
@@ -167,7 +177,7 @@ export default function FilterBar({
                 <X className="w-3.5 h-3.5" />
               </button>
             )}
-          </div>
+          </form>
         </div>
 
         {/* Ordenar */}
