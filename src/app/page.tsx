@@ -12,7 +12,7 @@ import { Loader2 } from "lucide-react";
 // false = Solo busca al presionar Enter o tocar la Lupa.
 // true  = Busca solo a medida que vas escribiendo (estilo Netflix).
 // ============================================================================
-const ENABLE_LIVE_SEARCH = true;
+const ENABLE_LIVE_SEARCH = false;
 
 export default function HomePage() {
   const [items, setItems] = useState<MediaItem[]>([]);
