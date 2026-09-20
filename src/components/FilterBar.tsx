@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useState, FormEvent } from "react";
+import { useRef, FormEvent } from "react";
 import { Search, X } from "lucide-react";
 
 const MOVIE_GENRES = [
@@ -45,57 +45,68 @@ const TV_GENRES = [
 export default function FilterBar() {
   const searchParams = useSearchParams();
 
-  const [type, setType] = useState(searchParams.get("type") || "movie");
-  const [genre, setGenre] = useState(searchParams.get("genre") || "");
-  const [year, setYear] = useState(searchParams.get("year") || "");
-  const [sortBy, setSortBy] = useState(searchParams.get("sortBy") || "vote_average.desc");
-  const [query, setQuery] = useState(searchParams.get("query") || "");
+  // Referencias directas al DOM (leen el texto físico al instante)
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const yearInputRef = useRef<HTMLInputElement>(null);
 
-  const genresList = type === "movie" ? MOVIE_GENRES : TV_GENRES;
+  const currentType = searchParams.get("type") || "movie";
+  const currentGenre = searchParams.get("genre") || "";
+  const currentYear = searchParams.get("year") || "";
+  const currentSortBy = searchParams.get("sortBy") || "vote_average.desc";
+  const currentQuery = searchParams.get("query") || "";
 
-  // Navegación nativa directa del navegador (infalible en cualquier dispositivo)
-  const navigateWithFilters = (newParams: Record<string, string>) => {
-    const currentParams = typeof window !== "undefined"
+  const genresList = currentType === "movie" ? MOVIE_GENRES : TV_GENRES;
+
+  const navigate = (newParams: Record<string, string>) => {
+    const params = typeof window !== "undefined"
       ? new URLSearchParams(window.location.search)
       : new URLSearchParams(searchParams.toString());
 
-    currentParams.set("page", "1");
+    params.set("page", "1");
 
     Object.entries(newParams).forEach(([key, val]) => {
       if (val && val.trim() !== "") {
-        currentParams.set(key, val.trim());
+        params.set(key, val.trim());
       } else {
-        currentParams.delete(key);
+        params.delete(key);
       }
     });
 
     if (typeof window !== "undefined") {
-      window.location.href = `/?${currentParams.toString()}`;
+      window.location.href = `/?${params.toString()}`;
     }
   };
 
-  const handleSearchSubmit = (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const input = e.currentTarget.elements.namedItem("searchQuery") as HTMLInputElement;
-    const value = input ? input.value : query;
-    navigateWithFilters({ query: value });
+  // Buscar leyendo directamente el valor físico del input
+  const submitSearch = () => {
+    const text = searchInputRef.current ? searchInputRef.current.value.trim() : "";
+    navigate({ query: text });
   };
 
-  const handleYearSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const handleSearchSubmit = (e: FormEvent) => {
     e.preventDefault();
-    const input = e.currentTarget.elements.namedItem("yearInput") as HTMLInputElement;
-    const value = input ? input.value : year;
-    navigateWithFilters({ year: value });
+    submitSearch();
+  };
+
+  // Buscar año leyendo directamente el input de año
+  const submitYear = () => {
+    const yr = yearInputRef.current ? yearInputRef.current.value.trim() : "";
+    navigate({ year: yr });
+  };
+
+  const handleYearSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    submitYear();
   };
 
   const clearSearch = () => {
-    setQuery("");
-    navigateWithFilters({ query: "" });
+    if (searchInputRef.current) searchInputRef.current.value = "";
+    navigate({ query: "" });
   };
 
   const clearYear = () => {
-    setYear("");
-    navigateWithFilters({ year: "" });
+    if (yearInputRef.current) yearInputRef.current.value = "";
+    navigate({ year: "" });
   };
 
   return (
@@ -111,15 +122,15 @@ export default function FilterBar() {
         </button>
 
         <input
+          ref={searchInputRef}
           name="searchQuery"
-          type="search"
+          type="text"
           placeholder="Buscar por nombre (presiona Enter o la lupa)..."
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          defaultValue={currentQuery}
           className="w-full pl-11 pr-10 py-2.5 bg-neutral-800 border border-neutral-700 rounded-lg text-sm text-neutral-100 focus:outline-none focus:border-amber-500 transition-colors placeholder-neutral-500 relative z-10"
         />
 
-        {query && (
+        {currentQuery && (
           <button
             type="button"
             onClick={clearSearch}
@@ -137,12 +148,9 @@ export default function FilterBar() {
         <div>
           <label className="block text-xs text-neutral-400 mb-1">Catálogo</label>
           <select
-            value={type}
+            defaultValue={currentType}
             onChange={(e) => {
-              const newType = e.target.value;
-              setType(newType);
-              setGenre("");
-              navigateWithFilters({ type: newType, genre: "" });
+              navigate({ type: e.target.value, genre: "" });
             }}
             className="w-full bg-neutral-800 border border-neutral-700 rounded-lg p-2.5 text-sm focus:outline-none focus:border-amber-500"
           >
@@ -155,11 +163,9 @@ export default function FilterBar() {
         <div>
           <label className="block text-xs text-neutral-400 mb-1">Género</label>
           <select
-            value={genre}
+            defaultValue={currentGenre}
             onChange={(e) => {
-              const val = e.target.value;
-              setGenre(val);
-              navigateWithFilters({ genre: val });
+              navigate({ genre: e.target.value });
             }}
             className="w-full bg-neutral-800 border border-neutral-700 rounded-lg p-2.5 text-sm focus:outline-none focus:border-amber-500"
           >
@@ -177,14 +183,14 @@ export default function FilterBar() {
           <label className="block text-xs text-neutral-400 mb-1">Año</label>
           <form onSubmit={handleYearSubmit} className="relative flex items-center w-full">
             <input
+              ref={yearInputRef}
               name="yearInput"
               type="number"
               placeholder="Ej: 1980, 2022..."
-              value={year}
-              onChange={(e) => setYear(e.target.value)}
+              defaultValue={currentYear}
               className="w-full bg-neutral-800 border border-neutral-700 rounded-lg p-2.5 pr-8 text-sm text-neutral-100 focus:outline-none focus:border-amber-500 placeholder-neutral-500"
             />
-            {year && (
+            {currentYear && (
               <button
                 type="button"
                 onClick={clearYear}
@@ -201,11 +207,9 @@ export default function FilterBar() {
         <div>
           <label className="block text-xs text-neutral-400 mb-1">Ordenar por</label>
           <select
-            value={sortBy}
+            defaultValue={currentSortBy}
             onChange={(e) => {
-              const val = e.target.value;
-              setSortBy(val);
-              navigateWithFilters({ sortBy: val });
+              navigate({ sortBy: e.target.value });
             }}
             className="w-full bg-neutral-800 border border-neutral-700 rounded-lg p-2.5 text-sm focus:outline-none focus:border-amber-500"
           >
