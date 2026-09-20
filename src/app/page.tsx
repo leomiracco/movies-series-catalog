@@ -1,34 +1,77 @@
-export const dynamic = "force-dynamic";
+"use client";
 
-import { getCatalog } from "@/lib/tmdb";
+import { useState, useEffect, useCallback } from "react";
 import FilterBar from "@/components/FilterBar";
 import MediaCardGrid from "@/components/MediaCardGrid";
 import Pagination from "@/components/Pagination";
+import { MediaItem, TMDBResponse } from "@/types/tmdb";
+import { Loader2 } from "lucide-react";
 
-interface PageProps {
-  searchParams: Promise<{
-    type?: "movie" | "tv";
-    query?: string;
-    year?: string;
-    genre?: string;
-    sortBy?: string;
-    page?: string;
-  }>;
-}
+export default function HomePage() {
+  const [items, setItems] = useState<MediaItem[]>([]);
+  const [loading, setLoading] = useState(true);
 
-export default async function HomePage({ searchParams }: PageProps) {
-  const resolvedParams = await searchParams;
-  const type = resolvedParams.type || "movie";
-  const page = resolvedParams.page ? parseInt(resolvedParams.page) : 1;
+  // Estados de los filtros
+  const [type, setType] = useState<"movie" | "tv">("movie");
+  const [genre, setGenre] = useState("");
+  const [year, setYear] = useState("");
+  const [sortBy, setSortBy] = useState("vote_average.desc");
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
-  const data = await getCatalog({
-    type,
-    query: resolvedParams.query,
-    year: resolvedParams.year,
-    genre: resolvedParams.genre,
-    sortBy: resolvedParams.sortBy,
-    page,
-  });
+  // Estado del texto escrito
+  const [queryInput, setQueryInput] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+
+  // Debounce: Cuando el usuario deja de escribir 450ms, busca automáticamente
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedQuery(queryInput);
+      setPage(1);
+    }, 450);
+    return () => clearTimeout(timer);
+  }, [queryInput]);
+
+  // Si el usuario presiona Enter o toca la lupa, ejecuta la búsqueda al instante
+  const handleImmediateSearch = () => {
+    setDebouncedQuery(queryInput);
+    setPage(1);
+  };
+
+  // Función para consultar la API interna
+  const fetchCatalog = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({
+        type,
+        page: page.toString(),
+        sortBy,
+      });
+
+      if (debouncedQuery.trim() !== "") params.set("query", debouncedQuery.trim());
+      if (genre) params.set("genre", genre);
+      if (year.trim() !== "") params.set("year", year.trim());
+
+      const res = await fetch(`/api/catalog?${params.toString()}`);
+      if (res.ok) {
+        const data: TMDBResponse = await res.json();
+        setItems(data.results || []);
+        setTotalPages(data.total_pages || 1);
+      } else {
+        setItems([]);
+      }
+    } catch (error) {
+      console.error("Error al cargar catálogo:", error);
+      setItems([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [type, page, sortBy, debouncedQuery, genre, year]);
+
+  // Ejecutar búsqueda cada vez que cambien los filtros
+  useEffect(() => {
+    fetchCatalog();
+  }, [fetchCatalog]);
 
   return (
     <main className="min-h-screen bg-black text-neutral-100 p-4 sm:p-8 max-w-7xl mx-auto">
@@ -41,11 +84,48 @@ export default async function HomePage({ searchParams }: PageProps) {
         </p>
       </header>
 
-      <FilterBar />
+      <FilterBar
+        query={queryInput}
+        setQuery={setQueryInput}
+        onSearchSubmit={handleImmediateSearch}
+        type={type}
+        setType={(t) => {
+          setType(t);
+          setPage(1);
+        }}
+        genre={genre}
+        setGenre={(g) => {
+          setGenre(g);
+          setPage(1);
+        }}
+        year={year}
+        setYear={(y) => {
+          setYear(y);
+          setPage(1);
+        }}
+        sortBy={sortBy}
+        setSortBy={(s) => {
+          setSortBy(s);
+          setPage(1);
+        }}
+      />
 
-      <MediaCardGrid items={data.results} type={type} />
-
-      <Pagination currentPage={data.page} totalPages={data.total_pages} />
+      {/* Indicador de carga animado */}
+      {loading ? (
+        <div className="flex flex-col items-center justify-center py-24 text-amber-500 gap-3">
+          <Loader2 className="w-10 h-10 animate-spin" />
+          <p className="text-sm text-neutral-400 font-medium">Buscando en el catálogo...</p>
+        </div>
+      ) : (
+        <>
+          <MediaCardGrid items={items} type={type} />
+          <Pagination
+            currentPage={page}
+            totalPages={totalPages}
+            onPageChange={(p) => setPage(p)}
+          />
+        </>
+      )}
     </main>
   );
 }

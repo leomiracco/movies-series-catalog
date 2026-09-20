@@ -1,7 +1,6 @@
 "use client";
 
-import Form from "next/form";
-import { useSearchParams } from "next/navigation";
+import { FormEvent } from "react";
 import { Search, X } from "lucide-react";
 
 const MOVIE_GENRES = [
@@ -42,51 +41,75 @@ const TV_GENRES = [
   { id: 37, name: "Western" },
 ];
 
-export default function FilterBar() {
-  const searchParams = useSearchParams();
+interface FilterBarProps {
+  query: string;
+  setQuery: (val: string) => void;
+  onSearchSubmit: () => void;
+  type: "movie" | "tv";
+  setType: (val: "movie" | "tv") => void;
+  genre: string;
+  setGenre: (val: string) => void;
+  year: string;
+  setYear: (val: string) => void;
+  sortBy: string;
+  setSortBy: (val: string) => void;
+}
 
-  const currentType = searchParams.get("type") || "movie";
-  const currentGenre = searchParams.get("genre") || "";
-  const currentYear = searchParams.get("year") || "";
-  const currentSortBy = searchParams.get("sortBy") || "vote_average.desc";
-  const currentQuery = searchParams.get("query") || "";
+export default function FilterBar({
+  query,
+  setQuery,
+  onSearchSubmit,
+  type,
+  setType,
+  genre,
+  setGenre,
+  year,
+  setYear,
+  sortBy,
+  setSortBy,
+}: FilterBarProps) {
+  const genresList = type === "movie" ? MOVIE_GENRES : TV_GENRES;
 
-  const genresList = currentType === "movie" ? MOVIE_GENRES : TV_GENRES;
+  const handleSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    if (typeof document !== "undefined" && document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+    onSearchSubmit();
+  };
 
   return (
-    <Form
-      action="/"
-      className="bg-neutral-900 border border-neutral-800 p-4 rounded-xl shadow-lg mb-8 text-neutral-100 flex flex-col gap-4"
-    >
-      {/* Buscador de texto con next/form nativo */}
-      <div className="relative flex items-center w-full">
+    <div className="bg-neutral-900 border border-neutral-800 p-4 rounded-xl shadow-lg mb-8 text-neutral-100 flex flex-col gap-4">
+      {/* Buscador de texto */}
+      <form onSubmit={handleSubmit} className="relative flex items-center w-full">
         <button
-          type="submit"
+          type="button"
+          onClick={handleSubmit}
           className="absolute left-0 top-0 bottom-0 pl-3 pr-2 flex items-center justify-center text-neutral-400 hover:text-amber-400 z-10 cursor-pointer"
-          title="Buscar"
+          title="Buscar ahora"
         >
           <Search className="w-5 h-5" />
         </button>
 
         <input
-          name="query"
           type="text"
-          placeholder="Buscar por nombre..."
-          defaultValue={currentQuery}
-          key={currentQuery}
+          placeholder="Buscar por nombre (busca solo o presiona Enter/Lupa)..."
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
           className="w-full pl-11 pr-10 py-2.5 bg-neutral-800 border border-neutral-700 rounded-lg text-sm text-neutral-100 focus:outline-none focus:border-amber-500 transition-colors placeholder-neutral-500"
         />
 
-        {currentQuery && (
-          <a
-            href={`/?type=${currentType}&genre=${currentGenre}&year=${currentYear}&sortBy=${currentSortBy}`}
+        {query && (
+          <button
+            type="button"
+            onClick={() => setQuery("")}
             className="absolute right-0 top-0 bottom-0 pr-3 pl-2 flex items-center justify-center text-neutral-400 hover:text-white z-10 cursor-pointer"
             title="Limpiar búsqueda"
           >
             <X className="w-4 h-4" />
-          </a>
+          </button>
         )}
-      </div>
+      </form>
 
       {/* 4 Controles de filtro */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -94,18 +117,12 @@ export default function FilterBar() {
         <div>
           <label className="block text-xs text-neutral-400 mb-1">Catálogo</label>
           <select
-            name="type"
-            defaultValue={currentType}
-            key={`type-${currentType}`}
+            value={type}
             onChange={(e) => {
-              const form = e.currentTarget.form;
-              if (form) {
-                const genreSelect = form.elements.namedItem("genre") as HTMLSelectElement;
-                if (genreSelect) genreSelect.value = "";
-                form.requestSubmit();
-              }
+              setType(e.target.value as "movie" | "tv");
+              setGenre("");
             }}
-            className="w-full bg-neutral-800 border border-neutral-700 rounded-lg p-2.5 text-sm focus:outline-none focus:border-amber-500"
+            className="w-full bg-neutral-800 border border-neutral-700 rounded-lg p-2.5 text-sm focus:outline-none focus:border-amber-500 cursor-pointer"
           >
             <option value="movie">Películas</option>
             <option value="tv">Series de TV</option>
@@ -116,11 +133,9 @@ export default function FilterBar() {
         <div>
           <label className="block text-xs text-neutral-400 mb-1">Género</label>
           <select
-            name="genre"
-            defaultValue={currentGenre}
-            key={`genre-${currentGenre}`}
-            onChange={(e) => e.currentTarget.form?.requestSubmit()}
-            className="w-full bg-neutral-800 border border-neutral-700 rounded-lg p-2.5 text-sm focus:outline-none focus:border-amber-500"
+            value={genre}
+            onChange={(e) => setGenre(e.target.value)}
+            className="w-full bg-neutral-800 border border-neutral-700 rounded-lg p-2.5 text-sm focus:outline-none focus:border-amber-500 cursor-pointer"
           >
             <option value="">Todos los géneros</option>
             {genresList.map((g) => (
@@ -136,21 +151,21 @@ export default function FilterBar() {
           <label className="block text-xs text-neutral-400 mb-1">Año</label>
           <div className="relative flex items-center w-full">
             <input
-              name="year"
               type="number"
               placeholder="Ej: 1980, 2022..."
-              defaultValue={currentYear}
-              key={`year-${currentYear}`}
+              value={year}
+              onChange={(e) => setYear(e.target.value)}
               className="w-full bg-neutral-800 border border-neutral-700 rounded-lg p-2.5 pr-8 text-sm text-neutral-100 focus:outline-none focus:border-amber-500 placeholder-neutral-500"
             />
-            {currentYear && (
-              <a
-                href={`/?type=${currentType}&genre=${currentGenre}&sortBy=${currentSortBy}&query=${currentQuery}`}
+            {year && (
+              <button
+                type="button"
+                onClick={() => setYear("")}
                 className="absolute right-2 text-neutral-400 hover:text-white p-1 z-10 cursor-pointer"
                 title="Limpiar año"
               >
                 <X className="w-3.5 h-3.5" />
-              </a>
+              </button>
             )}
           </div>
         </div>
@@ -159,11 +174,9 @@ export default function FilterBar() {
         <div>
           <label className="block text-xs text-neutral-400 mb-1">Ordenar por</label>
           <select
-            name="sortBy"
-            defaultValue={currentSortBy}
-            key={`sort-${currentSortBy}`}
-            onChange={(e) => e.currentTarget.form?.requestSubmit()}
-            className="w-full bg-neutral-800 border border-neutral-700 rounded-lg p-2.5 text-sm focus:outline-none focus:border-amber-500"
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            className="w-full bg-neutral-800 border border-neutral-700 rounded-lg p-2.5 text-sm focus:outline-none focus:border-amber-500 cursor-pointer"
           >
             <option value="vote_average.desc">Mayor Rating</option>
             <option value="vote_average.asc">Menor Rating</option>
@@ -172,6 +185,6 @@ export default function FilterBar() {
           </select>
         </div>
       </div>
-    </Form>
+    </div>
   );
 }

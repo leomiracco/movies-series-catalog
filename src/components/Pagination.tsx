@@ -1,34 +1,27 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronsLeft } from "lucide-react";
 
 interface Props {
   currentPage: number;
   totalPages: number;
+  onPageChange: (page: number) => void;
 }
 
-export default function Pagination({ currentPage, totalPages }: Props) {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-
+export default function Pagination({ currentPage, totalPages, onPageChange }: Props) {
   const maxPages = Math.min(totalPages, 500);
-
-  const goToPage = (page: number) => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("page", page.toString());
-    router.push(`/?${params.toString()}`);
-  };
 
   if (maxPages <= 1) return null;
 
   return (
     <div className="flex flex-wrap justify-center items-center gap-2 sm:gap-3 mt-10 mb-12">
-      {/* Botón para volver a la página 1 */}
       {currentPage > 1 && (
         <button
-          onClick={() => goToPage(1)}
-          className="px-3 py-2 bg-neutral-800 hover:bg-neutral-700 rounded-lg text-sm text-neutral-300 hover:text-white font-medium transition-colors flex items-center gap-1"
+          onClick={() => {
+            onPageChange(1);
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          }}
+          className="px-3 py-2 bg-neutral-800 hover:bg-neutral-700 rounded-lg text-sm text-neutral-300 hover:text-white font-medium transition-colors flex items-center gap-1 cursor-pointer"
           title="Ir a la primera página"
         >
           <ChevronsLeft className="w-4 h-4" />
@@ -38,8 +31,11 @@ export default function Pagination({ currentPage, totalPages }: Props) {
 
       <button
         disabled={currentPage <= 1}
-        onClick={() => goToPage(currentPage - 1)}
-        className="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 disabled:opacity-30 disabled:pointer-events-none rounded-lg text-sm text-white font-medium transition-colors"
+        onClick={() => {
+          onPageChange(currentPage - 1);
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }}
+        className="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 disabled:opacity-30 disabled:pointer-events-none rounded-lg text-sm text-white font-medium transition-colors cursor-pointer"
       >
         Anterior
       </button>
@@ -50,8 +46,11 @@ export default function Pagination({ currentPage, totalPages }: Props) {
 
       <button
         disabled={currentPage >= maxPages}
-        onClick={() => goToPage(currentPage + 1)}
-        className="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 disabled:opacity-30 disabled:pointer-events-none rounded-lg text-sm text-white font-medium transition-colors"
+        onClick={() => {
+          onPageChange(currentPage + 1);
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }}
+        className="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 disabled:opacity-30 disabled:pointer-events-none rounded-lg text-sm text-white font-medium transition-colors cursor-pointer"
       >
         Siguiente
       </button>
