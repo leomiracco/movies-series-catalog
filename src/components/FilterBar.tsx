@@ -52,7 +52,6 @@ export default function FilterBar() {
   const [sortBy, setSortBy] = useState(searchParams.get("sortBy") || "vote_average.desc");
   const [query, setQuery] = useState(searchParams.get("query") || "");
 
-  // Mantener el estado sincronizado con la URL
   useEffect(() => {
     setType(searchParams.get("type") || "movie");
     setGenre(searchParams.get("genre") || "");
@@ -68,32 +67,29 @@ export default function FilterBar() {
     params.set("page", "1");
 
     Object.entries(newParams).forEach(([key, val]) => {
-      if (val) params.set(key, val);
+      if (val && val.trim() !== "") params.set(key, val.trim());
       else params.delete(key);
     });
 
     router.push(`/?${params.toString()}`);
   };
 
-  const executeSearch = () => {
-    // Cierra el teclado en celulares para que el usuario vea los resultados de inmediato
-    if (typeof document !== "undefined" && document.activeElement instanceof HTMLElement) {
-      document.activeElement.blur();
-    }
-    updateFilters({ query });
+  // Enviar búsqueda leyendo directamente el input de la pantalla
+  const handleSearchSubmit = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const input = e.currentTarget.elements.namedItem("searchQuery") as HTMLInputElement;
+    const value = input ? input.value : query;
+    input?.blur(); // Cierra el teclado del teléfono
+    updateFilters({ query: value });
   };
 
-  const handleSearchSubmit = (e: FormEvent) => {
+  // Enviar año leyendo directamente el input
+  const handleYearSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    executeSearch();
-  };
-
-  const handleYearSubmit = (e: FormEvent) => {
-    e.preventDefault();
-    if (typeof document !== "undefined" && document.activeElement instanceof HTMLElement) {
-      document.activeElement.blur();
-    }
-    updateFilters({ year });
+    const input = e.currentTarget.elements.namedItem("yearInput") as HTMLInputElement;
+    const value = input ? input.value : year;
+    input?.blur();
+    updateFilters({ year: value });
   };
 
   const handleQueryChange = (val: string) => {
@@ -118,35 +114,34 @@ export default function FilterBar() {
 
   return (
     <div className="bg-neutral-900 border border-neutral-800 p-4 rounded-xl shadow-lg mb-8 text-neutral-100 flex flex-col gap-4">
-      {/* Buscador de texto con botón y soporte móvil */}
-      <form onSubmit={handleSearchSubmit} className="relative flex items-center">
+      {/* Buscador de texto con botón táctil Z-20 */}
+      <form onSubmit={handleSearchSubmit} className="relative flex items-center w-full">
         <button
-          type="button"
-          onClick={executeSearch}
-          className="absolute left-3 z-10 text-neutral-400 hover:text-amber-400 p-1.5 transition-colors cursor-pointer"
+          type="submit"
+          className="absolute left-0 top-0 bottom-0 pl-3 pr-2 flex items-center justify-center text-neutral-400 hover:text-amber-400 z-20 cursor-pointer"
           title="Buscar"
         >
-          <Search className="w-4 h-4" />
+          <Search className="w-5 h-5" />
         </button>
+
         <input
+          name="searchQuery"
           type="search"
           enterKeyHint="search"
-          placeholder="Buscar por nombre (presiona la lupa o Enter)..."
+          autoComplete="off"
+          autoCorrect="off"
+          spellCheck={false}
+          placeholder="Buscar por nombre..."
           value={query}
           onChange={(e) => handleQueryChange(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              executeSearch();
-            }
-          }}
-          className="w-full pl-10 pr-10 py-2.5 bg-neutral-800 border border-neutral-700 rounded-lg text-sm text-neutral-100 focus:outline-none focus:border-amber-500 transition-colors placeholder-neutral-500"
+          className="w-full pl-11 pr-10 py-2.5 bg-neutral-800 border border-neutral-700 rounded-lg text-sm text-neutral-100 focus:outline-none focus:border-amber-500 transition-colors placeholder-neutral-500 relative z-10"
         />
+
         {query && (
           <button
             type="button"
             onClick={clearSearch}
-            className="absolute right-3 z-10 text-neutral-400 hover:text-white p-1 rounded-full hover:bg-neutral-700 transition-colors cursor-pointer"
+            className="absolute right-0 top-0 bottom-0 pr-3 pl-2 flex items-center justify-center text-neutral-400 hover:text-white z-20 cursor-pointer"
             title="Limpiar búsqueda"
           >
             <X className="w-4 h-4" />
@@ -195,34 +190,26 @@ export default function FilterBar() {
           </select>
         </div>
 
-        {/* Año con enterKeyHint */}
+        {/* Año */}
         <div>
           <label className="block text-xs text-neutral-400 mb-1">Año</label>
-          <form onSubmit={handleYearSubmit} className="relative">
+          <form onSubmit={handleYearSubmit} className="relative flex items-center w-full">
             <input
+              name="yearInput"
               type="number"
               inputMode="numeric"
               enterKeyHint="search"
               placeholder="Ej: 1980, 2022..."
               value={year}
               onChange={(e) => handleYearChange(e.target.value)}
-              onBlur={() => updateFilters({ year })}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  if (typeof document !== "undefined" && document.activeElement instanceof HTMLElement) {
-                    document.activeElement.blur();
-                  }
-                  updateFilters({ year });
-                }
-              }}
+              onBlur={(e) => updateFilters({ year: e.target.value })}
               className="w-full bg-neutral-800 border border-neutral-700 rounded-lg p-2.5 pr-8 text-sm text-neutral-100 focus:outline-none focus:border-amber-500 placeholder-neutral-500"
             />
             {year && (
               <button
                 type="button"
                 onClick={clearYear}
-                className="absolute right-2 top-3 z-10 text-neutral-400 hover:text-white p-0.5 rounded-full hover:bg-neutral-700 transition-colors"
+                className="absolute right-2 text-neutral-400 hover:text-white p-1 z-20 cursor-pointer"
                 title="Limpiar año"
               >
                 <X className="w-3.5 h-3.5" />
