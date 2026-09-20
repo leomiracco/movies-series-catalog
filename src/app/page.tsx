@@ -7,6 +7,13 @@ import Pagination from "@/components/Pagination";
 import { MediaItem, TMDBResponse } from "@/types/tmdb";
 import { Loader2 } from "lucide-react";
 
+// ============================================================================
+// INTERRUPTOR DE BÚSQUEDA EN TIEMPO REAL:
+// false = Solo busca al presionar Enter o tocar la Lupa.
+// true  = Busca solo a medida que vas escribiendo (estilo Netflix).
+// ============================================================================
+const ENABLE_LIVE_SEARCH = false;
+
 export default function HomePage() {
   const [items, setItems] = useState<MediaItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -19,22 +26,32 @@ export default function HomePage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
-  // Estado del texto escrito
+  // queryInput: lo que está escrito en la caja en este momento
+  // activeQuery: el término con el que realmente se hace la búsqueda
   const [queryInput, setQueryInput] = useState("");
-  const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [activeQuery, setActiveQuery] = useState("");
 
-  // Debounce: Cuando el usuario deja de escribir 450ms, busca automáticamente
+  // Búsqueda en vivo (solo se activa si ENABLE_LIVE_SEARCH es true)
   useEffect(() => {
+    if (!ENABLE_LIVE_SEARCH) {
+      // Si el usuario borra todo el texto, regresa al catálogo automáticamente
+      if (queryInput === "" && activeQuery !== "") {
+        setActiveQuery("");
+        setPage(1);
+      }
+      return;
+    }
+
     const timer = setTimeout(() => {
-      setDebouncedQuery(queryInput);
+      setActiveQuery(queryInput);
       setPage(1);
     }, 450);
     return () => clearTimeout(timer);
-  }, [queryInput]);
+  }, [queryInput, activeQuery]);
 
-  // Si el usuario presiona Enter o toca la lupa, ejecuta la búsqueda al instante
+  // Se ejecuta al presionar Enter o tocar la lupa
   const handleImmediateSearch = () => {
-    setDebouncedQuery(queryInput);
+    setActiveQuery(queryInput);
     setPage(1);
   };
 
@@ -48,7 +65,7 @@ export default function HomePage() {
         sortBy,
       });
 
-      if (debouncedQuery.trim() !== "") params.set("query", debouncedQuery.trim());
+      if (activeQuery.trim() !== "") params.set("query", activeQuery.trim());
       if (genre) params.set("genre", genre);
       if (year.trim() !== "") params.set("year", year.trim());
 
@@ -66,7 +83,7 @@ export default function HomePage() {
     } finally {
       setLoading(false);
     }
-  }, [type, page, sortBy, debouncedQuery, genre, year]);
+  }, [type, page, sortBy, activeQuery, genre, year]);
 
   // Ejecutar búsqueda cada vez que cambien los filtros
   useEffect(() => {
