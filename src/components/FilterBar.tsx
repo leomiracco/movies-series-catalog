@@ -1,7 +1,7 @@
 "use client";
 
+import Form from "next/form";
 import { useSearchParams } from "next/navigation";
-import { useRef, FormEvent } from "react";
 import { Search, X } from "lucide-react";
 
 const MOVIE_GENRES = [
@@ -45,10 +45,6 @@ const TV_GENRES = [
 export default function FilterBar() {
   const searchParams = useSearchParams();
 
-  // Referencias directas al DOM (leen el texto físico al instante)
-  const searchInputRef = useRef<HTMLInputElement>(null);
-  const yearInputRef = useRef<HTMLInputElement>(null);
-
   const currentType = searchParams.get("type") || "movie";
   const currentGenre = searchParams.get("genre") || "";
   const currentYear = searchParams.get("year") || "";
@@ -57,90 +53,40 @@ export default function FilterBar() {
 
   const genresList = currentType === "movie" ? MOVIE_GENRES : TV_GENRES;
 
-  const navigate = (newParams: Record<string, string>) => {
-    const params = typeof window !== "undefined"
-      ? new URLSearchParams(window.location.search)
-      : new URLSearchParams(searchParams.toString());
-
-    params.set("page", "1");
-
-    Object.entries(newParams).forEach(([key, val]) => {
-      if (val && val.trim() !== "") {
-        params.set(key, val.trim());
-      } else {
-        params.delete(key);
-      }
-    });
-
-    if (typeof window !== "undefined") {
-      window.location.href = `/?${params.toString()}`;
-    }
-  };
-
-  // Buscar leyendo directamente el valor físico del input
-  const submitSearch = () => {
-    const text = searchInputRef.current ? searchInputRef.current.value.trim() : "";
-    navigate({ query: text });
-  };
-
-  const handleSearchSubmit = (e: FormEvent) => {
-    e.preventDefault();
-    submitSearch();
-  };
-
-  // Buscar año leyendo directamente el input de año
-  const submitYear = () => {
-    const yr = yearInputRef.current ? yearInputRef.current.value.trim() : "";
-    navigate({ year: yr });
-  };
-
-  const handleYearSubmit = (e: FormEvent) => {
-    e.preventDefault();
-    submitYear();
-  };
-
-  const clearSearch = () => {
-    if (searchInputRef.current) searchInputRef.current.value = "";
-    navigate({ query: "" });
-  };
-
-  const clearYear = () => {
-    if (yearInputRef.current) yearInputRef.current.value = "";
-    navigate({ year: "" });
-  };
-
   return (
-    <div className="bg-neutral-900 border border-neutral-800 p-4 rounded-xl shadow-lg mb-8 text-neutral-100 flex flex-col gap-4">
-      {/* Buscador de texto */}
-      <form onSubmit={handleSearchSubmit} className="relative flex items-center w-full">
+    <Form
+      action="/"
+      className="bg-neutral-900 border border-neutral-800 p-4 rounded-xl shadow-lg mb-8 text-neutral-100 flex flex-col gap-4"
+    >
+      {/* Buscador de texto con next/form nativo */}
+      <div className="relative flex items-center w-full">
         <button
           type="submit"
-          className="absolute left-0 top-0 bottom-0 pl-3 pr-2 flex items-center justify-center text-neutral-400 hover:text-amber-400 z-20 cursor-pointer"
+          className="absolute left-0 top-0 bottom-0 pl-3 pr-2 flex items-center justify-center text-neutral-400 hover:text-amber-400 z-10 cursor-pointer"
           title="Buscar"
         >
           <Search className="w-5 h-5" />
         </button>
 
         <input
-          ref={searchInputRef}
-          name="searchQuery"
+          name="query"
           type="text"
-          placeholder="Buscar por nombre (presiona Enter o la lupa)..."
+          placeholder="Buscar por nombre..."
           defaultValue={currentQuery}
-          className="w-full pl-11 pr-10 py-2.5 bg-neutral-800 border border-neutral-700 rounded-lg text-sm text-neutral-100 focus:outline-none focus:border-amber-500 transition-colors placeholder-neutral-500 relative z-10"
+          key={currentQuery}
+          className="w-full pl-11 pr-10 py-2.5 bg-neutral-800 border border-neutral-700 rounded-lg text-sm text-neutral-100 focus:outline-none focus:border-amber-500 transition-colors placeholder-neutral-500"
         />
 
         {currentQuery && (
-          <button
-            type="button"
-            onClick={clearSearch}
-            className="absolute right-0 top-0 bottom-0 pr-3 pl-2 flex items-center justify-center text-neutral-400 hover:text-white z-20 cursor-pointer"
+          <a
+            href={`/?type=${currentType}&genre=${currentGenre}&year=${currentYear}&sortBy=${currentSortBy}`}
+            className="absolute right-0 top-0 bottom-0 pr-3 pl-2 flex items-center justify-center text-neutral-400 hover:text-white z-10 cursor-pointer"
             title="Limpiar búsqueda"
           >
             <X className="w-4 h-4" />
-          </button>
+          </a>
         )}
-      </form>
+      </div>
 
       {/* 4 Controles de filtro */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -148,9 +94,16 @@ export default function FilterBar() {
         <div>
           <label className="block text-xs text-neutral-400 mb-1">Catálogo</label>
           <select
+            name="type"
             defaultValue={currentType}
+            key={`type-${currentType}`}
             onChange={(e) => {
-              navigate({ type: e.target.value, genre: "" });
+              const form = e.currentTarget.form;
+              if (form) {
+                const genreSelect = form.elements.namedItem("genre") as HTMLSelectElement;
+                if (genreSelect) genreSelect.value = "";
+                form.requestSubmit();
+              }
             }}
             className="w-full bg-neutral-800 border border-neutral-700 rounded-lg p-2.5 text-sm focus:outline-none focus:border-amber-500"
           >
@@ -163,10 +116,10 @@ export default function FilterBar() {
         <div>
           <label className="block text-xs text-neutral-400 mb-1">Género</label>
           <select
+            name="genre"
             defaultValue={currentGenre}
-            onChange={(e) => {
-              navigate({ genre: e.target.value });
-            }}
+            key={`genre-${currentGenre}`}
+            onChange={(e) => e.currentTarget.form?.requestSubmit()}
             className="w-full bg-neutral-800 border border-neutral-700 rounded-lg p-2.5 text-sm focus:outline-none focus:border-amber-500"
           >
             <option value="">Todos los géneros</option>
@@ -181,36 +134,35 @@ export default function FilterBar() {
         {/* Año */}
         <div>
           <label className="block text-xs text-neutral-400 mb-1">Año</label>
-          <form onSubmit={handleYearSubmit} className="relative flex items-center w-full">
+          <div className="relative flex items-center w-full">
             <input
-              ref={yearInputRef}
-              name="yearInput"
+              name="year"
               type="number"
               placeholder="Ej: 1980, 2022..."
               defaultValue={currentYear}
+              key={`year-${currentYear}`}
               className="w-full bg-neutral-800 border border-neutral-700 rounded-lg p-2.5 pr-8 text-sm text-neutral-100 focus:outline-none focus:border-amber-500 placeholder-neutral-500"
             />
             {currentYear && (
-              <button
-                type="button"
-                onClick={clearYear}
-                className="absolute right-2 text-neutral-400 hover:text-white p-1 z-20 cursor-pointer"
+              <a
+                href={`/?type=${currentType}&genre=${currentGenre}&sortBy=${currentSortBy}&query=${currentQuery}`}
+                className="absolute right-2 text-neutral-400 hover:text-white p-1 z-10 cursor-pointer"
                 title="Limpiar año"
               >
                 <X className="w-3.5 h-3.5" />
-              </button>
+              </a>
             )}
-          </form>
+          </div>
         </div>
 
         {/* Ordenar */}
         <div>
           <label className="block text-xs text-neutral-400 mb-1">Ordenar por</label>
           <select
+            name="sortBy"
             defaultValue={currentSortBy}
-            onChange={(e) => {
-              navigate({ sortBy: e.target.value });
-            }}
+            key={`sort-${currentSortBy}`}
+            onChange={(e) => e.currentTarget.form?.requestSubmit()}
             className="w-full bg-neutral-800 border border-neutral-700 rounded-lg p-2.5 text-sm focus:outline-none focus:border-amber-500"
           >
             <option value="vote_average.desc">Mayor Rating</option>
@@ -220,6 +172,6 @@ export default function FilterBar() {
           </select>
         </div>
       </div>
-    </div>
+    </Form>
   );
 }

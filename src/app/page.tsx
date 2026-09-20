@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { getCatalog } from "@/lib/tmdb";
 import FilterBar from "@/components/FilterBar";
 import MediaCardGrid from "@/components/MediaCardGrid";
